@@ -51,7 +51,7 @@
             class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           >
             <option value="">Select a project</option>
-            <option value="non-project">Non-Project (General Check-in)</option>
+            <option value="non-project">Services (General Check-in)</option>
             <option v-for="project in projects" :key="project.name" :value="project">
               {{ project.project_name }}
             </option>
