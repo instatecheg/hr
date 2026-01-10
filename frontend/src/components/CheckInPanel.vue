@@ -110,12 +110,15 @@ import { computed, inject, ref, onMounted, onBeforeUnmount } from "vue"
   async function fetchProjects() {
   let res = await call("frappe.client.get_list", {
     doctype: "Project",
-    fields: ["name", "project_name", "custom_location"],
+    fields: ["name", "project_name", "custom_location", "is_active"], // include is_active
     order_by: "project_name asc",
     limit_page_length: 0,   // 0 means "no limit"
-  })
-  console.log(res)
-  projects.value = res
+  });
+
+  console.log(res);
+
+  // Filter out inactive projects (where is_active = "No")
+  projects.value = res.filter(project => project.is_active !== "No");
 }
   const settings = createResource({
     url: "hrms.api.get_hr_settings",
