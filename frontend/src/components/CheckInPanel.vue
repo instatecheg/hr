@@ -1,11 +1,14 @@
 <template>
   <div class="flex flex-col bg-white rounded w-full py-6 px-4 border-none">
-    <h2 class="text-lg font-bold text-gray-900">Hey, {{ employee?.data?.first_name }} 👋</h2>
+    <h2 class="text-lg font-bold text-gray-900">
+      Hey, {{ employee?.data?.first_name }} 👋
+    </h2>
 
     <template v-if="settings.data?.allow_employee_checkin_from_mobile_app">
       <div class="font-medium text-sm text-gray-500 mt-1.5" v-if="lastLog">
         Last {{ lastLogType }} was at {{ lastLogTime }}
       </div>
+
       <Button
         class="mt-4 mb-1 drop-shadow-sm py-5 text-base"
         id="open-checkin-modal"
@@ -34,6 +37,7 @@
     :breakpoints="[0, 1]"
   >
     <div class="h-120 w-full flex flex-col items-center justify-center gap-5 p-4 mb-5">
+
       <div class="flex flex-col gap-1.5 mt-2 items-center justify-center">
         <div class="font-bold text-xl">
           {{ dayjs(checkinTimestamp).format("hh:mm:ss a") }}
@@ -43,12 +47,17 @@
         </div>
       </div>
 
+      <!-- ================= Project Selection ================= -->
       <div class="w-full">
-        <label for="project" class="block text-sm font-medium text-gray-700">Select Project</label>
+        <label for="project" class="block text-sm font-medium text-gray-700">
+          Select Project
+        </label>
         <select
           id="project"
           v-model="selectedProject"
-          class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300
+                 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500
+                 sm:text-sm rounded-md"
         >
           <option value="">Select a project</option>
           <option value="non-project">Non-Project (General Check-in)</option>
@@ -58,13 +67,22 @@
         </select>
       </div>
 
-      <!-- Cost Center (New Field) -->
+      <!-- ===================================================== -->
+      <!-- =============== COST CENTER SECTION ================= -->
+      <!-- Cost Center selection UI (currently commented out)  -->
+      <!-- ===================================================== -->
+
+      <!--
       <div class="w-full mt-3">
-        <label for="cost-center" class="block text-sm font-medium text-gray-700">Select Cost Center</label>
+        <label for="cost-center" class="block text-sm font-medium text-gray-700">
+          Select Cost Center
+        </label>
         <select
           id="cost-center"
           v-model="selectedCostCenter"
-          class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300
+                 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500
+                 sm:text-sm rounded-md"
         >
           <option value="">Select a Cost Center</option>
           <option v-for="cc in costCenters" :key="cc.name" :value="cc.name">
@@ -72,13 +90,25 @@
           </option>
         </select>
       </div>
+      -->
 
+      <!-- ===================================================== -->
+      <!-- ========== LOCATION / DISTANCE UI SECTION ============ -->
+      <!-- All UI related to geolocation, distance & map         -->
+      <!-- is commented out as requested                          -->
+      <!-- ===================================================== -->
+
+      <!--
       <template v-if="settings.data?.allow_geolocation_tracking">
+
         <span v-if="locationStatus" class="font-medium text-gray-500 text-sm">
           {{ locationStatus }}
         </span>
 
-        <div v-if="distance !== null && selectedProject && selectedProject !== 'non-project'" class="text-sm text-gray-600">
+        <div
+          v-if="distance !== null && selectedProject && selectedProject !== 'non-project'"
+          class="text-sm text-gray-600"
+        >
           You are {{ distance.toFixed(2) }} meters away from the project location.
         </div>
 
@@ -95,14 +125,23 @@
           >
           </iframe>
         </div>
-      </template>
 
-      <Button variant="solid" class="w-full py-5 text-sm" @click="submitLog(nextAction.action)">
+      </template>
+      -->
+
+      <!-- ================= Submit Button ================= -->
+      <Button
+        variant="solid"
+        class="w-full py-5 text-sm"
+        @click="submitLog(nextAction.action)"
+      >
         Confirm {{ nextAction.label }}
       </Button>
+
     </div>
   </ion-modal>
 </template>
+
 
 <script setup>
 import { createResource, createListResource, call, toast, FeatherIcon } from "frappe-ui"
@@ -332,7 +371,7 @@ const submitLog = (logType) => {
     }
 
     const [projectLongitude, projectLatitude] = geojson.features[0].geometry.coordinates
-    const distance = calculateDistance(
+    /*const distance = calculateDistance(
       latitude.value,
       longitude.value,
       projectLatitude,
@@ -348,7 +387,7 @@ const submitLog = (logType) => {
         iconClasses: "text-red-500",
       })
       return
-    }
+    }*/
 
     checkins.insert.submit(
       {
