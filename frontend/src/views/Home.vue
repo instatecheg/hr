@@ -57,5 +57,12 @@ const quickLinks = [
 		title: __("View Salary Slips"),
 		route: "SalarySlipsDashboard",
 	},
+	
+  {
+  icon: markRaw(ShiftIcon),
+  title: __("Timesheet"),
+  route: "Timesheet", 
+}
+
 ]
 </script>
