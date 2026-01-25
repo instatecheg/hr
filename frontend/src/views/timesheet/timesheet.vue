@@ -1,6 +1,9 @@
 <template>
+  <BaseLayout :pageTitle="__('Timesheet')">
+    <template #body>
   <div class="flex flex-col h-screen bg-white overflow-hidden">
-    
+
+    <!-- Header -->
     <div class="p-4 border-b shrink-0 bg-white z-10">
       <h2 class="text-xl font-bold text-gray-900">Create Timesheet</h2>
       <p class="text-sm text-gray-500">
@@ -8,43 +11,71 @@
       </p>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4 space-y-6 pb-64">
-      
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6 pb-64">
+
+      <!-- Add Time Log -->
       <div class="p-4 space-y-4 bg-gray-50 border rounded-lg shadow-sm">
         <h3 class="font-semibold text-gray-700">Add Time Log</h3>
 
         <div>
-          <label class="block text-xs font-bold text-gray-600 uppercase">Activity Type</label>
-          <select v-model="newEntry.activity_type" class="mt-1 block w-full rounded-md border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500">
+          <label class="block text-xs font-bold text-gray-600 uppercase">
+            Activity Type
+          </label>
+          <select
+            v-model="newEntry.activity_type"
+            class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+          >
             <option value="" disabled>Select Activity</option>
-            <option v-for="type in activityTypes" :key="type.name" :value="type.name">{{ type.name }}</option>
+            <option v-for="type in activityTypes" :key="type.name" :value="type.name">
+              {{ type.name }}
+            </option>
           </select>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">From Time</label>
-            <input type="datetime-local" v-model="newEntry.from_time" class="mt-1 block w-full rounded-md border-gray-300 text-sm" />
+            <input
+              type="datetime-local"
+              v-model="newEntry.from_time"
+              class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+            />
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">To Time</label>
-            <input type="datetime-local" v-model="newEntry.to_time" class="mt-1 block w-full rounded-md border-gray-300 text-sm" />
+            <input
+              type="datetime-local"
+              v-model="newEntry.to_time"
+              class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+            />
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">Project</label>
-            <select v-model="newEntry.project" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+            <select
+              v-model="newEntry.project"
+              class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+            >
               <option value="">None</option>
-              <option v-for="p in projects" :key="p.name" :value="p.name">{{ p.project_name }}</option>
+              <option v-for="p in projects" :key="p.name" :value="p.name">
+                {{ p.project_name }}
+              </option>
             </select>
           </div>
+
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">Cost Center</label>
-            <select v-model="newEntry.custom_cost_center" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+            <select
+              v-model="newEntry.custom_cost_center"
+              class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+            >
               <option value="">None</option>
-              <option v-for="cc in costCenters" :key="cc.name" :value="cc.name">{{ cc.cost_center_name }}</option>
+              <option v-for="cc in costCenters" :key="cc.name" :value="cc.name">
+                {{ cc.cost_center_name }}
+              </option>
             </select>
           </div>
         </div>
@@ -54,57 +85,84 @@
         </Button>
       </div>
 
+      <!-- Logs -->
       <div>
-        <h3 class="font-semibold text-gray-700 mb-2">Logs ({{ timeLogs.length }})</h3>
+        <h3 class="font-semibold text-gray-700 mb-2">
+          Logs ({{ timeLogs.length }})
+        </h3>
 
-        <div v-if="timeLogs.length === 0" class="text-center py-10 text-gray-400 italic border border-dashed rounded-lg bg-gray-50">
+        <div
+          v-if="timeLogs.length === 0"
+          class="text-center py-10 text-gray-400 italic border border-dashed rounded-lg bg-gray-50"
+        >
           No logs added yet.
         </div>
 
         <div v-else class="border rounded-lg overflow-x-auto bg-white shadow-sm">
           <table class="min-w-full divide-y divide-gray-200">
-           <thead class="bg-gray-50">
-            <tr>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Activity Type</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">From Time</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">To Time</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cost Center</th>
-              <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(log, index) in timeLogs" :key="index">
-              <td class="px-3 py-3 text-sm font-medium">{{ log.activity_type }}</td>
-              <td class="px-3 py-3 text-sm text-gray-500">{{ dayjs(log.from_time).format('HH:mm') }}</td>
-              <td class="px-3 py-3 text-sm text-gray-500">{{ dayjs(log.to_time).format('HH:mm') }}</td>
-              <td class="px-3 py-3 text-sm text-gray-500">{{ log.project || '—' }}</td>
-              <td class="px-3 py-3 text-sm text-gray-500">{{ log.custom_cost_center || '—' }}</td>
-              <td class="px-3 py-3 text-right">
-                <button @click="timeLogs.splice(index, 1)" class="text-red-500 text-sm font-medium">Remove</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Activity Type</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">From Time</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">To Time</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cost Center</th>
+                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+              </tr>
+            </thead>
+
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="(log, index) in timeLogs" :key="index">
+                <td class="px-3 py-3 text-sm font-medium">{{ log.activity_type }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500">
+                  {{ dayjs(log.from_time).format('HH:mm') }}
+                </td>
+                <td class="px-3 py-3 text-sm text-gray-500">
+                  {{ dayjs(log.to_time).format('HH:mm') }}
+                </td>
+                <td class="px-3 py-3 text-sm text-gray-500">{{ log.project || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500">{{ log.custom_cost_center || '—' }}</td>
+                <td class="px-3 py-3 text-right">
+                  <button
+                    class="text-red-500 text-sm font-medium"
+                    @click="timeLogs.splice(index, 1)"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <!-- Actions -->
       <div class="space-y-3">
-        <Button class="w-full py-6 text-lg font-semibold" @click="saveTimesheet(false)">Save Draft</Button>
-        <Button 
-          class="w-full py-6 text-lg font-semibold" 
+        <Button class="w-full py-6 text-lg font-semibold" @click="saveTimesheet(false)">
+          Save Draft
+        </Button>
+
+        <Button
+          class="w-full py-6 text-lg font-semibold"
           variant="default"
-          @click="submitTimesheetByName(currentTimesheetName)" 
+          @click="submitTimesheetByName(currentTimesheetName)"
           :disabled="!currentTimesheetName"
         >
           Submit Timesheet
         </Button>
       </div>
 
+      <!-- Bottom Spacer -->
       <div class="h-32"></div>
 
     </div>
   </div>
 </template>
+
+  </BaseLayout>
+</template>
+
+
 
 <style scoped>
 /* Ensures momentum scrolling on iOS and hides scrollbar if desired */
@@ -119,7 +177,8 @@
 </style>
 <script setup>
 import { ref, onMounted, inject } from "vue"
-import { call, toast, createResource} from "frappe-ui"
+import { call, toast, Button } from "frappe-ui"
+import BaseLayout from "@/components/BaseLayout.vue"
 
 const employee = inject("$employee")
 const dayjs = inject("$dayjs")
