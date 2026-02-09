@@ -52,7 +52,8 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
+
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">Project</label>
             <select
@@ -65,6 +66,21 @@
               </option>
             </select>
           </div>
+          <div>
+  <label class="block text-xs font-bold text-gray-600 uppercase">
+    Department
+  </label>
+  <select
+    v-model="newEntry.department"
+    class="mt-1 block w-full rounded-md border-gray-300 text-sm"
+  >
+    <option value="">None</option>
+    <option v-for="d in departments" :key="d.name" :value="d.name">
+      {{ d.department_name }}
+    </option>
+  </select>
+</div>
+
 
           <div>
             <label class="block text-xs font-bold text-gray-600 uppercase">Cost Center</label>
@@ -106,6 +122,7 @@
                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">From Time</th>
                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">To Time</th>
                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cost Center</th>
                 <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
               </tr>
@@ -121,6 +138,7 @@
                   {{ dayjs(log.to_time).format('HH:mm') }}
                 </td>
                 <td class="px-3 py-3 text-sm text-gray-500">{{ log.project || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500">{{ log.custom_department || "—" }}</td>
                 <td class="px-3 py-3 text-sm text-gray-500">{{ log.custom_cost_center || '—' }}</td>
                 <td class="px-3 py-3 text-right">
                   <button
@@ -142,14 +160,6 @@
           Save Draft
         </Button>
 
-        <Button
-          class="w-full py-6 text-lg font-semibold"
-          variant="default"
-          @click="submitTimesheetByName(currentTimesheetName)"
-          :disabled="!currentTimesheetName"
-        >
-          Submit Timesheet
-        </Button>
       </div>
 
       <!-- Bottom Spacer -->
@@ -192,14 +202,17 @@ const activityTypes = ref([])
 const latitude = ref(0)
 const longitude = ref(0)
 const locationStatus = ref("")
+const departments = ref([])
 
 const newEntry = ref({
   activity_type: "",
   from_time: "",
   to_time: "",
   project: "",
+  department: "",
   custom_cost_center: ""
 })
+
 
 // Track current working Timesheet
 const currentTimesheet = ref(null)
@@ -242,15 +255,32 @@ const submitTimesheetByName = async (timesheetName) => {
 
 /* ------------------ Fetch Metadata ------------------ */
 const fetchMetadata = async () => {
-  const [act, proj, cc] = await Promise.all([
-    call("frappe.client.get_list", { doctype: "Activity Type", fields: ["name"] }),
-    call("frappe.client.get_list", { doctype: "Project", fields: ["name", "project_name", "custom_location"], filters: { is_active: "Yes" } }),
-    call("frappe.client.get_list", { doctype: "Cost Center", fields: ["name", "cost_center_name"] })
+  const [act, proj, dept, cc] = await Promise.all([
+    call("frappe.client.get_list", {
+      doctype: "Activity Type",
+      fields: ["name"]
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Project",
+      fields: ["name", "project_name", "custom_location"],
+      filters: { is_active: "Yes" }
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Department",
+      fields: ["name", "department_name"]
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Cost Center",
+      fields: ["name", "cost_center_name"]
+    })
   ])
+
   activityTypes.value = act
   projects.value = proj
+  departments.value = dept
   costCenters.value = cc
 }
+
 
 /* ------------------ Distance Utility ------------------ */
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -289,26 +319,46 @@ const fetchLocation = () => {
 }
 
 /* ------------------ Add Log Entry ------------------ */
-const addLogToTable = () => {
-  if (!newEntry.value.activity_type || !newEntry.value.from_time || !newEntry.value.to_time) {
-    toast({ title: "Error", text: "Fill Activity and Times", variant: "error" })
+const addLogToTable = async () => {
+  const locationOk = await fetchLocation()
+  if (!locationOk) return
+
+  const e = newEntry.value
+
+  if (
+    !e.activity_type ||
+    !e.from_time ||
+    !e.to_time ||
+    !e.project ||
+    !e.department
+  ) {
+    toast({
+      title: "Missing Data",
+      text: "Activity, time, project and department are required",
+      variant: "error"
+    })
     return
   }
 
-  // Make Project mandatory
-  if (!newEntry.value.project) {
-    toast({ title: "Error", text: "Please select a Project", variant: "error" })
-    return
-  }
-
-  // Add current location to each log
-  timeLogs.value.push({ 
-    ...newEntry.value,
+  timeLogs.value.push({
+    activity_type: e.activity_type,
+    from_time: e.from_time,
+    to_time: e.to_time,
+    project: e.project,
+    custom_cost_center: e.custom_cost_center,
+    custom_department: e.department,
     custom_latitude: latitude.value,
     custom_longitude: longitude.value
   })
 
-  newEntry.value = { activity_type: "", from_time: "", to_time: "", project: "", custom_cost_center: "" }
+  newEntry.value = {
+    activity_type: "",
+    from_time: "",
+    to_time: "",
+    project: "",
+    department: "",
+    custom_cost_center: ""
+  }
 }
 
 
@@ -346,7 +396,7 @@ const loadTodayDraftTimesheet = async () => {
   }
 }
 /* ------------------ Validate Distance ------------------ */
-const validateDistance = () => {
+/* const validateDistance = () => {
   for (const log of timeLogs.value) {
     if (!log.project) continue
     const project = projects.value.find(p => p.name === log.project)
@@ -378,7 +428,7 @@ const validateDistance = () => {
     }
   }
   return true
-}
+}*/
 
 /* ------------------ Save or Submit Timesheet ------------------ */
 
@@ -389,7 +439,7 @@ const saveTimesheet = async (submit = false) => {
     return
   }
 
-  if (!validateDistance()) return
+  // if (!validateDistance()) return
 
   try {
     let finalDocName = ""
