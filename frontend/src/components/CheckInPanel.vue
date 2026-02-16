@@ -51,12 +51,14 @@
 <input
   type="text"
   v-model="projectSearch"
-  placeholder="Type project name..."
+  placeholder="Type or click to select project..."
+  @focus="isDropdownOpen = true"
+  @blur="setTimeout(() => isDropdownOpen = false, 200)" 
   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
 />
 
 <ul
-  v-if="filteredProjects.length && projectSearch"
+  v-if="isDropdownOpen && filteredProjects.length"
   class="mt-1 border rounded-md max-h-40 overflow-y-auto bg-white shadow"
 >
   <li
@@ -120,16 +122,18 @@ import { computed, inject, ref, onMounted, onBeforeUnmount } from "vue"
   
   const projects =ref([null])
   const projectSearch = ref("")
-
+  const isDropdownOpen = ref(false);
 
 const filteredProjects = computed(() => {
-  if (!projectSearch.value) return []
+  // If no search text, show all projects
+  if (!projectSearch.value) return projects.value;
+
   return projects.value.filter(p =>
     p.project_name
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(projectSearch.value.toLowerCase())
-  )
-})
+  );
+});
 
 const selectProject = (project) => {
   selectedProject.value = project
@@ -253,11 +257,11 @@ const selectProject = (project) => {
     }
   }
   
-  const submitLog = (logType) => {
+ const submitLog = (logType) => {
     const action = logType === "IN" ? "Check-in" : "Check-out"
   
     // حالة Non-Project (لا توجد شروط)
-    if (selectedProject.value === "non-project") {
+    if (!selectedProject.value.custom_location) {
       checkins.insert.submit(
         {
           employee: employee.data.name,
@@ -394,6 +398,7 @@ const selectProject = (project) => {
       console.error("Error parsing project location:", error)
     }
   }
+
   
   onMounted(() => {
     socket.emit("doctype_subscribe", DOCTYPE)
