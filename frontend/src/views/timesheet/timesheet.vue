@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject, watch } from "vue"
+import { ref, onMounted, inject } from "vue"
 import { call, toast } from "frappe-ui"
 import BaseLayout from "@/components/BaseLayout.vue"
 
@@ -121,28 +121,47 @@ const departments = ref([])
 const latitude = ref(0)
 const longitude = ref(0)
 const currentTimesheet = ref(null)
-const currentTimesheetName = ref("") 
+const currentTimesheetName = ref("")
 
 const newEntry = ref({
   activity_type: "",
   from_time: "",
   to_time: "",
   project: "",
-  department: "",
+  custom_department: "",
   custom_cost_center: ""
 })
 
-
+/* ================= FETCH META ================= */
 
 const fetchMetadata = async () => {
   const [act, proj, dept, cc] = await Promise.all([
-    call("frappe.client.get_list", { doctype: "Activity Type", fields: ["name"] }),
-    call("frappe.client.get_list", { doctype: "Project", fields: ["name", "project_name"], filters: { is_active: "Yes" } }),
-    call("frappe.client.get_list", { doctype: "Department", fields: ["name", "department_name"] }),
-    call("frappe.client.get_list", { doctype: "Cost Center", fields: ["name", "cost_center_name"] })
+    call("frappe.client.get_list", {
+      doctype: "Activity Type",
+      fields: ["name"]
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Project",
+      fields: ["name", "project_name"],
+      filters: { is_active: "Yes" }
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Department",
+      fields: ["name", "department_name"]
+    }),
+    call("frappe.client.get_list", {
+      doctype: "Cost Center",
+      fields: ["name", "cost_center_name"]
+    })
   ])
-  activityTypes.value = act; projects.value = proj; departments.value = dept; costCenters.value = cc;
+
+  activityTypes.value = act
+  projects.value = proj
+  departments.value = dept
+  costCenters.value = cc
 }
+
+/* ================= GPS ================= */
 
 const fetchLocation = () => {
   return new Promise((resolve) => {
@@ -152,11 +171,13 @@ const fetchLocation = () => {
         longitude.value = pos.coords.longitude
         resolve(true)
       },
-      () => { resolve(false) },
+      () => resolve(false),
       { enableHighAccuracy: true }
     )
   })
 }
+
+/* ================= ADD LOG ================= */
 
 const addLogToTable = async () => {
   const locationOk = await fetchLocation()
@@ -166,110 +187,153 @@ const addLogToTable = async () => {
   }
 
   const e = newEntry.value
+
   if (!e.activity_type || !e.from_time || !e.to_time || !e.project || !e.custom_cost_center) {
-    toast({ title: "Missing Data", text: "Please fill all mandatory fields (Activity, Times, Project, Cost Center)", variant: "error" });
-    return;
+    toast({
+      title: "Missing Data",
+      text: "Please fill all mandatory fields",
+      variant: "error"
+    })
+    return
   }
 
-  // البحث عن الأسماء لعرضها في الكارد
-  const selectedProj = projects.value.find(p => p.name === e.project);
-  const selectedDept = departments.value.find(d => d.name === e.department);
-  const selectedCC = costCenters.value.find(c => c.name === e.custom_cost_center);
+  const selectedProj = projects.value.find(p => p.name === e.project)
+  const selectedDept = departments.value.find(d => d.name === e.custom_department)
+  const selectedCC = costCenters.value.find(c => c.name === e.custom_cost_center)
 
   timeLogs.value.unshift({
     activity_type: e.activity_type,
     from_time: e.from_time,
     to_time: e.to_time,
-    project: e.project, // الـ ID للحفظ
-    project_display: selectedProj ? selectedProj.project_name : e.project, // الاسم للعرض
-    custom_cost_center: e.custom_cost_center, // الـ ID للحفظ
-    cc_display: selectedCC ? selectedCC.cost_center_name : e.custom_cost_center, // الاسم للعرض
-    custom_department: e.department,
-    dept_display: selectedDept ? selectedDept.department_name : (e.department || '—'),
+    project: e.project,
+    project_display: selectedProj ? selectedProj.project_name : e.project,
+
+    custom_cost_center: e.custom_cost_center,
+    cc_display: selectedCC ? selectedCC.cost_center_name : e.custom_cost_center,
+
+    custom_department: e.custom_department,
+    dept_display: selectedDept ? selectedDept.department_name : (e.custom_department || "—"),
+
     custom_latitude: latitude.value,
     custom_longitude: longitude.value
   })
 
-  // ريسيت للفورم
-  newEntry.value = { activity_type: "", from_time: "", to_time: "", project: "", department: "", custom_cost_center: "" }
+  newEntry.value = {
+    activity_type: "",
+    from_time: "",
+    to_time: "",
+    project: "",
+    custom_department: "",
+    custom_cost_center: ""
+  }
 }
 
-const saveTimesheet = async (submit = false) => {
+/* ================= SAVE ================= */
+
+const saveTimesheet = async () => {
   try {
     let finalDocName = ""
-    // تنظيف البيانات المرسلة للسيرفر (إرسال الـ IDs فقط)
+
     const logsToSave = timeLogs.value.map(log => ({
-        activity_type: log.activity_type,
-        from_time: log.from_time,
-        to_time: log.to_time,
-        project: log.project,
-        cost_center: log.custom_cost_center,
-        department: log.custom_department,
-        custom_latitude: log.custom_latitude,
-        custom_longitude: log.custom_longitude
-    }));
+      activity_type: log.activity_type,
+      from_time: log.from_time,
+      to_time: log.to_time,
+      project: log.project,
+      custom_cost_center: log.custom_cost_center,
+      custom_department: log.custom_department,
+      custom_latitude: log.custom_latitude,
+      custom_longitude: log.custom_longitude
+    }))
 
     if (currentTimesheet.value) {
       finalDocName = currentTimesheet.value.name
+
       await call("frappe.client.set_value", {
         doctype: "Timesheet",
         name: finalDocName,
-        fieldname: { time_logs: logsToSave }
+        fieldname: {
+          time_logs: logsToSave
+        }
       })
+
     } else {
       const doc = {
         doctype: "Timesheet",
         employee: employee.data.name,
         time_logs: logsToSave
       }
+
       const res = await call("frappe.client.insert", { doc })
+
       finalDocName = res.name
       currentTimesheet.value = res
       currentTimesheetName.value = res.name
     }
-    toast({ title: "Success", text: "Saved successfully", variant: "success" })
+
+    toast({
+      title: "Success",
+      text: "Saved successfully",
+      variant: "success"
+    })
+
   } catch (e) {
-    toast({ title: "Error", text: e.message || "Failed to save", variant: "error" })
+    toast({
+      title: "Error",
+      text: e.message || "Failed to save",
+      variant: "error"
+    })
   }
 }
+
+/* ================= LOAD DRAFT ================= */
 
 const loadTodayDraftTimesheet = async () => {
   try {
     const todayStart = dayjs().startOf("day").format("YYYY-MM-DD HH:mm:ss")
+
     const res = await call("frappe.client.get_list", {
       doctype: "Timesheet",
-      filters: { employee: employee.data.name, docstatus: 0, creation: [">=", todayStart] },
-      fields: ["name"], limit: 1
+      filters: {
+        employee: employee.data.name,
+        docstatus: 0,
+        creation: [">=", todayStart]
+      },
+      fields: ["name"],
+      limit: 1
     })
-    if (res.length) {
-      const fullDoc = await call("frappe.client.get", { doctype: "Timesheet", name: res[0].name })
-      currentTimesheet.value = fullDoc
-      currentTimesheetName.value = fullDoc.name
-      
-      // عند التحميل من السيرفر، نحتاج لإعادة ربط الأسماء للعرض
-      timeLogs.value = (fullDoc.time_logs || []).map(log => {
-          const p = projects.value.find(proj => proj.name === log.project);
-          const c = costCenters.value.find(cc => cc.name === log.cost_center);
-          const d = departments.value.find(dept => dept.name === log.department);
-          return {
-              ...log,
-              project_display: p ? p.project_name : log.project,
-              cc_display: c ? c.cost_center_name : log.cost_center,
-              dept_display: d ? d.department_name : (log.department || '—'),
-              custom_cost_center: log.cost_center, // لتوحيد الأسماء مع الـ State بتاعنا
-              custom_department: log.department
-          }
-      });
-    } else {
-        const backup = localStorage.getItem('ts_logs_backup');
-    }
-  } catch (err) { console.error(err) }
+
+    if (!res.length) return
+
+    const fullDoc = await call("frappe.client.get", {
+      doctype: "Timesheet",
+      name: res[0].name
+    })
+
+    currentTimesheet.value = fullDoc
+    currentTimesheetName.value = fullDoc.name
+
+    timeLogs.value = (fullDoc.time_logs || []).map(log => {
+      const p = projects.value.find(proj => proj.name === log.project)
+      const c = costCenters.value.find(cc => cc.name === log.custom_cost_center)
+      const d = departments.value.find(dept => dept.name === log.custom_department)
+
+      return {
+        ...log,
+        project_display: p ? p.project_name : log.project,
+        cc_display: c ? c.cost_center_name : log.custom_cost_center,
+        dept_display: d ? d.department_name : (log.custom_department || "—")
+      }
+    })
+
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 onMounted(async () => {
-  await fetchMetadata();
-  await fetchLocation();
-  await loadTodayDraftTimesheet();
+  await fetchMetadata()
+  await fetchLocation()
+  await loadTodayDraftTimesheet()
 })
 </script>
 
