@@ -19,55 +19,114 @@
           <div class="card-form">
             <h3 class="section-title">Add Time Log</h3>
 
+            <!-- Activity Type -->
             <div class="input-field">
               <label>Activity Type <span class="star">*</span></label>
               <select v-model="newEntry.activity_type" class="native-input">
                 <option value="" disabled>Select Activity</option>
-                <option v-for="type in activityTypes" :key="type.name" :value="type.name">{{ type.name }}</option>
+                <option v-for="type in activityTypes" :key="type.name" :value="type.name">
+                  {{ type.name }}
+                </option>
               </select>
             </div>
 
+            <!-- From -->
             <div class="input-field">
               <label>From Time <span class="star">*</span></label>
               <input type="datetime-local" v-model="newEntry.from_time" class="native-input" />
             </div>
 
+            <!-- To -->
             <div class="input-field">
               <label>To Time <span class="star">*</span></label>
               <input type="datetime-local" v-model="newEntry.to_time" class="native-input" />
             </div>
 
+            <!-- Project Search -->
             <div class="input-field">
               <label>Project <span class="star">*</span></label>
-              <select v-model="newEntry.project" class="native-input">
-                <option value="">None</option>
-                <option v-for="p in projects" :key="p.name" :value="p.name">{{ p.project_name }}</option>
-              </select>
+              <div class="relative">
+                <input
+                  type="text"
+                  v-model="projectSearch"
+                  @focus="isProjectOpen = true"
+                  @input="isProjectOpen = true"
+                  placeholder="Search Project..."
+                  class="native-input"
+                />
+                <ul v-if="isProjectOpen && filteredProjects.length" class="dropdown-list">
+                  <li
+                    v-for="project in filteredProjects"
+                    :key="project.name"
+                    @click="selectProject(project)"
+                    class="dropdown-item"
+                  >
+                    {{ project.project_name }}
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <div class="input-row">
+              <!-- Department Search -->
               <div class="input-field">
                 <label>Department</label>
-                <select v-model="newEntry.department" class="native-input">
-                  <option value="">None</option>
-                  <option v-for="d in departments" :key="d.name" :value="d.name">{{ d.department_name }}</option>
-                </select>
+                <div class="relative">
+                  <input
+                    type="text"
+                    v-model="departmentSearch"
+                    @focus="isDepartmentOpen = true"
+                    @input="isDepartmentOpen = true"
+                    placeholder="Search Department..."
+                    class="native-input"
+                  />
+                  <ul v-if="isDepartmentOpen && filteredDepartments.length" class="dropdown-list">
+                    <li
+                      v-for="dept in filteredDepartments"
+                      :key="dept.name"
+                      @click="selectDepartment(dept)"
+                      class="dropdown-item"
+                    >
+                      {{ dept.department_name }}
+                    </li>
+                  </ul>
+                </div>
               </div>
+
+              <!-- Cost Center Search -->
               <div class="input-field">
                 <label>Cost Center <span class="star">*</span></label>
-                <select v-model="newEntry.custom_cost_center" class="native-input">
-                  <option value="">None</option>
-                  <option v-for="cc in costCenters" :key="cc.name" :value="cc.name">{{ cc.cost_center_name }}</option>
-                </select>
+                <div class="relative">
+                  <input
+                    type="text"
+                    v-model="costCenterSearch"
+                    @focus="isCostCenterOpen = true"
+                    @input="isCostCenterOpen = true"
+                    placeholder="Search Cost Center..."
+                    class="native-input"
+                  />
+                  <ul v-if="isCostCenterOpen && filteredCostCenters.length" class="dropdown-list">
+                    <li
+                      v-for="cc in filteredCostCenters"
+                      :key="cc.name"
+                      @click="selectCostCenter(cc)"
+                      class="dropdown-item"
+                    >
+                      {{ cc.cost_center_name }}
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
-            <button class="btn-primary" @click="addLogToTable">Add Entry</button>
+            <button class="btn-primary" @click="addLogToTable">
+              Add Entry
+            </button>
           </div>
 
-          <div v-if="timeLogs.length > 0" class="summary-container">
+          <div v-if="timeLogs.length" class="summary-container">
             <div class="summary-divider">
-               <h2>Summary ({{ timeLogs.length }})</h2>
+              <h2>Summary ({{ timeLogs.length }})</h2>
             </div>
 
             <div v-for="(log, index) in timeLogs" :key="index" class="log-entry-card">
@@ -75,7 +134,6 @@
                 <span class="badge">{{ log.activity_type }}</span>
                 <button @click="timeLogs.splice(index, 1)" class="btn-remove">✕</button>
               </div>
-              
               <div class="log-body">
                 <p><strong>Project:</strong> {{ log.project_display }}</p>
                 <p><strong>Time:</strong> {{ dayjs(log.from_time).format('HH:mm') }} - {{ dayjs(log.to_time).format('HH:mm') }}</p>
@@ -83,19 +141,16 @@
                   <span><strong>Dept:</strong> {{ log.dept_display }}</span>
                   <span><strong>CC:</strong> {{ log.cc_display }}</span>
                 </div>
-                <div class="gps-info">
-                  📍 GPS: {{ log.custom_latitude?.toFixed(5) }}, {{ log.custom_longitude?.toFixed(5) }}
-                </div>
               </div>
             </div>
 
-            <button class="btn-submit" @click="saveTimesheet(false)">
+            <button class="btn-submit" @click="saveTimesheet()">
               Save Timesheet Draft
             </button>
           </div>
 
           <div v-else class="empty-state">
-             No logs added yet.
+            No logs added yet.
           </div>
 
           <div class="spacer"></div>
@@ -106,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from "vue"
+import { ref, computed, onMounted, inject } from "vue"
 import { call, toast } from "frappe-ui"
 import BaseLayout from "@/components/BaseLayout.vue"
 
@@ -118,8 +173,10 @@ const projects = ref([])
 const costCenters = ref([])
 const activityTypes = ref([])
 const departments = ref([])
+
 const latitude = ref(0)
 const longitude = ref(0)
+
 const currentTimesheet = ref(null)
 const currentTimesheetName = ref("")
 
@@ -131,6 +188,58 @@ const newEntry = ref({
   custom_department: "",
   custom_cost_center: ""
 })
+
+/* ================= SEARCH STATES ================= */
+
+const projectSearch = ref("")
+const departmentSearch = ref("")
+const costCenterSearch = ref("")
+
+const isProjectOpen = ref(false)
+const isDepartmentOpen = ref(false)
+const isCostCenterOpen = ref(false)
+
+const filteredProjects = computed(() =>
+  !projectSearch.value
+    ? projects.value
+    : projects.value.filter(p =>
+        p.project_name?.toLowerCase().includes(projectSearch.value.toLowerCase())
+      )
+)
+
+const filteredDepartments = computed(() =>
+  !departmentSearch.value
+    ? departments.value
+    : departments.value.filter(d =>
+        d.department_name?.toLowerCase().includes(departmentSearch.value.toLowerCase())
+      )
+)
+
+const filteredCostCenters = computed(() =>
+  !costCenterSearch.value
+    ? costCenters.value
+    : costCenters.value.filter(c =>
+        c.cost_center_name?.toLowerCase().includes(costCenterSearch.value.toLowerCase())
+      )
+)
+
+const selectProject = (p) => {
+  newEntry.value.project = p.name
+  projectSearch.value = p.project_name
+  isProjectOpen.value = false
+}
+
+const selectDepartment = (d) => {
+  newEntry.value.custom_department = d.name
+  departmentSearch.value = d.department_name
+  isDepartmentOpen.value = false
+}
+
+const selectCostCenter = (c) => {
+  newEntry.value.custom_cost_center = c.name
+  costCenterSearch.value = c.cost_center_name
+  isCostCenterOpen.value = false
+}
 
 /* ================= FETCH META ================= */
 
@@ -384,4 +493,24 @@ onMounted(async () => {
 
 .empty-state { text-align: center; padding: 40px 0; color: #94a3b8; font-style: italic; }
 .spacer { height: 120px; }
+.relative { position: relative; }
+.dropdown-list {
+  position: absolute;
+  width: 100%;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 4px;
+  z-index: 50;
+}
+.dropdown-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.dropdown-item:hover {
+  background-color: #ecfdf5;
+}
 </style>
