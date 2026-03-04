@@ -198,7 +198,7 @@ const costCenterSearch = ref("")
 const isProjectOpen = ref(false)
 const isDepartmentOpen = ref(false)
 const isCostCenterOpen = ref(false)
-
+const allowedCostCenters = ref([])
 const filteredProjects = computed(() =>
   !projectSearch.value
     ? projects.value
@@ -215,13 +215,29 @@ const filteredDepartments = computed(() =>
       )
 )
 
-const filteredCostCenters = computed(() =>
-  !costCenterSearch.value
-    ? costCenters.value
-    : costCenters.value.filter(c =>
-        c.cost_center_name?.toLowerCase().includes(costCenterSearch.value.toLowerCase())
+const filteredCostCenters = computed(() => {
+  let list = costCenters.value
+
+  // 🔹 If department selected → filter by allowed list
+  if (newEntry.value.custom_department) {
+    // ✅ Only filter if allowedCostCenters has items
+    if (allowedCostCenters.value.length) {
+      list = list.filter(c =>
+        allowedCostCenters.value.includes(c.name)
       )
-)
+    }
+    // else leave list as all costCenters
+  }
+
+  // 🔹 Apply search filter
+  if (!costCenterSearch.value) return list
+
+  return list.filter(c =>
+    c.cost_center_name
+      ?.toLowerCase()
+      .includes(costCenterSearch.value.toLowerCase())
+  )
+})
 
 const selectProject = (p) => {
   newEntry.value.project = p.name
@@ -229,10 +245,35 @@ const selectProject = (p) => {
   isProjectOpen.value = false
 }
 
-const selectDepartment = (d) => {
+const selectDepartment = async (d) => {
   newEntry.value.custom_department = d.name
   departmentSearch.value = d.department_name
   isDepartmentOpen.value = false
+
+  // 🔹 Clear cost center when department changes
+  newEntry.value.custom_cost_center = ""
+  costCenterSearch.value = ""
+  allowedCostCenters.value = []
+
+  if (!d.name) return
+
+  try {
+    // 🔹 Get full Department doc
+    const deptDoc = await call("frappe.client.get", {
+      doctype: "Department",
+      name: d.name
+    })
+
+    // 🔹 Extract allowed cost centers (child table)
+    const allowed = (deptDoc.custom_cost_center || []).map(
+      row => row.cost_center
+    )
+
+    allowedCostCenters.value = allowed
+
+  } catch (err) {
+    console.error("Failed to fetch department cost centers", err)
+  }
 }
 
 const selectCostCenter = (c) => {
