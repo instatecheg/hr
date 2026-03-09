@@ -216,35 +216,46 @@ const filteredDepartments = computed(() =>
 )
 
 const filteredCostCenters = computed(() => {
-  console.error("filteredCostCenters computed triggered")
-  
-  let list = costCenters.value
-  console.error("Initial costCenters list:", list)
+  console.error("filteredCostCenters triggered")
 
-  // 🔹 If department selected → filter by allowed list
+  let list = costCenters.value
+  console.error("Initial list:", list)
+
   if (newEntry.value.custom_department) {
-    console.error("Department selected:", newEntry.value.custom_department)
+    console.error("Department:", newEntry.value.custom_department)
 
     if (allowedCostCenters.value.length) {
-      console.error("Allowed cost centers:", allowedCostCenters.value)
-      list = list.filter(c => allowedCostCenters.value.includes(c.name))
-      console.error("List after allowedCostCenters filter:", list)
-    } else {
-      console.error("No allowedCostCenters, list unchanged")
+      console.error("Allowed:", allowedCostCenters.value)
+
+      list = list.filter(c => {
+  if (!c.cost_center_number) return false
+
+  const match = allowedCostCenters.value.some(cc => {
+    const number = cc.split(" - ")[0]
+    return number === c.cost_center_number
+  })
+
+  console.error("Checking:", c.cost_center_number, "Match:", match)
+
+  return match
+})
+
+      console.error("After filter:", list)
     }
-  } else {
-    console.error("No department selected, list unchanged")
   }
 
-  // 🔹 Apply search filter
   if (!costCenterSearch.value) {
-    console.error("No search filter applied, final list:", list)
+    console.error("Final list (no search):", list)
     return list
   }
 
   const search = costCenterSearch.value.toLowerCase()
-  list = list.filter(c => c.cost_center_name?.toLowerCase().includes(search))
-  console.error("List after search filter:", list)
+
+  list = list.filter(c =>
+    c.cost_center_name?.toLowerCase().includes(search)
+  )
+
+  console.error("After search filter:", list)
 
   return list
 })
@@ -309,9 +320,10 @@ const fetchMetadata = async () => {
       fields: ["name", "department_name"]
     }),
     call("frappe.client.get_list", {
-      doctype: "Cost Center",
-      fields: ["name", "cost_center_name"]
-    })
+        doctype: "Cost Center",
+  fields: ["name", "cost_center_name", "cost_center_number"],
+  limit_page_length: 0
+})
   ])
 
   activityTypes.value = act
