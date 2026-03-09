@@ -321,82 +321,67 @@ const selectProject = (project) => {
       return
     }*/
   
-    try {
-      const geojson = JSON.parse(selectedProject.value.custom_location)
-      if (!geojson.features || !geojson.features[0]?.geometry?.coordinates) {
-        toast({
-          title: "Error",
-          text: "Invalid project coordinates.",
-          icon: "alert-circle",
-          position: "bottom-center",
-          iconClasses: "text-red-500",
-        })
-        return
-      }
-  
-      const [projectLongitude, projectLatitude] = geojson.features[0].geometry.coordinates
-      /*const distance = calculateDistance(
+try {
+  const geojson = JSON.parse(selectedProject.value.custom_location || '{}')
+
+  let projectLatitude = null
+  let projectLongitude = null
+
+  // Only try to get coordinates if features exist
+  if (geojson.features?.[0]?.geometry?.coordinates) {
+    [projectLongitude, projectLatitude] = geojson.features[0].geometry.coordinates
+    // Optionally calculate distance here if you want
+    /* const distance = calculateDistance(
         latitude.value,
         longitude.value,
         projectLatitude,
         projectLongitude
-      )*/
+    )
+    if (distance > 50) { ... } */
+  }
 
-  
-      /*if (distance > 50) {
+  checkins.insert.submit(
+    {
+      employee: employee.data.name,
+      log_type: logType,
+      time: checkinTimestamp.value,
+      latitude: latitude.value,
+      longitude: longitude.value,
+      custom_project: selectedProject.value.name,
+    },
+    {
+      onSuccess() {
+        modalController.dismiss()
+        toast({
+          title: "Success",
+          text: `${action} successful!`,
+          icon: "check-circle",
+          position: "bottom-center",
+          iconClasses: "text-green-500",
+        })
+        selectedProject.value = null
+      },
+      onError() {
         toast({
           title: "Error",
-          text: `You are ${distance.toFixed(2)} meters away from the project location. Maximum allowed distance is 50 meters.`,
+          text: `${action} failed!`,
           icon: "alert-circle",
           position: "bottom-center",
           iconClasses: "text-red-500",
         })
-        return
-      }*/
-
-  
-      checkins.insert.submit(
-        {
-          employee: employee.data.name,
-          log_type: logType,
-          time: checkinTimestamp.value,
-          latitude: latitude.value,
-          longitude: longitude.value,
-          custom_project: selectedProject.value.name,
-        },
-        {
-          onSuccess() {
-            modalController.dismiss()
-            toast({
-              title: "Success",
-              text: `${action} successful!`,
-              icon: "check-circle",
-              position: "bottom-center",
-              iconClasses: "text-green-500",
-            })
-            selectedProject.value = null
-          },
-          onError() {
-            toast({
-              title: "Error",
-              text: `${action} failed!`,
-              icon: "alert-circle",
-              position: "bottom-center",
-              iconClasses: "text-red-500",
-            })
-          },
-        }
-      )
-    } catch (error) {
-      toast({
-        title: "Error",
-        text: "Invalid project location data.",
-        icon: "alert-circle",
-        position: "bottom-center",
-        iconClasses: "text-red-500",
-      })
-      console.error("Error parsing project location:", error)
+      },
     }
+  )
+} catch (error) {
+  toast({
+    title: "Error",
+    text: "Invalid project location data.",
+    icon: "alert-circle",
+    position: "bottom-center",
+    iconClasses: "text-red-500",
+  })
+  console.error("Error parsing project location:", error)
+}
   }
 
   

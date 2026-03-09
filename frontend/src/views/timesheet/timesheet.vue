@@ -216,29 +216,38 @@ const filteredDepartments = computed(() =>
 )
 
 const filteredCostCenters = computed(() => {
+  console.error("filteredCostCenters computed triggered")
+  
   let list = costCenters.value
+  console.error("Initial costCenters list:", list)
 
   // 🔹 If department selected → filter by allowed list
   if (newEntry.value.custom_department) {
-    // ✅ Only filter if allowedCostCenters has items
+    console.error("Department selected:", newEntry.value.custom_department)
+
     if (allowedCostCenters.value.length) {
-      list = list.filter(c =>
-        allowedCostCenters.value.includes(c.name)
-      )
+      console.error("Allowed cost centers:", allowedCostCenters.value)
+      list = list.filter(c => allowedCostCenters.value.includes(c.name))
+      console.error("List after allowedCostCenters filter:", list)
+    } else {
+      console.error("No allowedCostCenters, list unchanged")
     }
-    // else leave list as all costCenters
+  } else {
+    console.error("No department selected, list unchanged")
   }
 
   // 🔹 Apply search filter
-  if (!costCenterSearch.value) return list
+  if (!costCenterSearch.value) {
+    console.error("No search filter applied, final list:", list)
+    return list
+  }
 
-  return list.filter(c =>
-    c.cost_center_name
-      ?.toLowerCase()
-      .includes(costCenterSearch.value.toLowerCase())
-  )
+  const search = costCenterSearch.value.toLowerCase()
+  list = list.filter(c => c.cost_center_name?.toLowerCase().includes(search))
+  console.error("List after search filter:", list)
+
+  return list
 })
-
 const selectProject = (p) => {
   newEntry.value.project = p.name
   projectSearch.value = p.project_name
