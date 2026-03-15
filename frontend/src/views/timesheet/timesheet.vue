@@ -308,16 +308,19 @@ const fetchMetadata = async () => {
   const [act, proj, dept, cc] = await Promise.all([
     call("frappe.client.get_list", {
       doctype: "Activity Type",
-      fields: ["name"]
+      fields: ["name"],
+      limit_page_length: 0
     }),
     call("frappe.client.get_list", {
       doctype: "Project",
       fields: ["name", "project_name"],
-      filters: { is_active: "Yes" }
+      filters: { is_active: "Yes" },
+      limit_page_length: 0
     }),
     call("frappe.client.get_list", {
       doctype: "Department",
-      fields: ["name", "department_name"]
+      fields: ["name", "department_name"],
+      limit_page_length: 0
     }),
     call("frappe.client.get_list", {
         doctype: "Cost Center",
