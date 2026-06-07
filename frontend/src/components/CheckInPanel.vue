@@ -72,7 +72,46 @@
 </ul>
 
         </div>
-  
+  <!-- Select Cost Center Section -->
+        <div class="w-full mt-4">
+          <label class="block text-sm font-medium text-gray-700">
+            Select Cost Center <span class="text-red-500">*</span>
+          </label>
+
+          <input
+            type="text"
+            v-model="costCenterSearch"
+            placeholder="Type or click to select cost center..."
+            @focus="isCostCenterDropdownOpen = true"
+            @blur="setTimeout(() => isCostCenterDropdownOpen = false, 200)"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          />
+
+          <ul
+            v-if="isCostCenterDropdownOpen && filteredCostCenters.length"
+            class="mt-1 border rounded-md max-h-40 overflow-y-auto bg-white shadow"
+          >
+            <li
+              v-for="cc in filteredCostCenters"
+              :key="cc.name"
+              @click="selectCostCenter(cc)"
+              class="px-3 py-2 cursor-pointer hover:bg-indigo-50 text-sm"
+            >
+              {{ cc.cost_center_name }}
+            </li>
+          </ul>
+          
+         <div
+  v-if="
+    departmentDetails &&
+    !filteredCostCenters.length &&
+    !costCenterSearch
+  "
+  class="text-xs text-red-400 mt-1"
+>
+  No cost centers linked to your department were found.
+</div>
+        </div>
         <template v-if="settings.data?.allow_geolocation_tracking">
           <span v-if="locationStatus" class="font-medium text-gray-500 text-sm">
             {{ locationStatus }}
@@ -104,303 +143,351 @@
     </ion-modal>
   </template>
   
-  <script setup>
-import { createResource, createListResource, call, toast, FeatherIcon } from "frappe-ui"
+ <script setup>
+  import { createResource, createListResource, call, toast, FeatherIcon } from "frappe-ui"
 import { computed, inject, ref, onMounted, onBeforeUnmount } from "vue"
-  import { IonModal, modalController } from "@ionic/vue"
-  const DOCTYPE = "Employee Checkin"
-  
-  const socket = inject("$socket")
-  const employee = inject("$employee")
-  const dayjs = inject("$dayjs")
-  const checkinTimestamp = ref(null)
-  const latitude = ref(0)
-  const longitude = ref(0)
-  const locationStatus = ref("")
-  const selectedProject = ref(null)
-  const distance = ref(null)
-  
-  const projects =ref([null])
-  const projectSearch = ref("")
-  const isDropdownOpen = ref(false);
+import { IonModal, modalController } from "@ionic/vue"
+import { watchEffect } from "vue"
 
+const DOCTYPE = "Employee Checkin"
+
+const socket = inject("$socket")
+const employee = inject("$employee")
+const dayjs = inject("$dayjs")
+const checkinTimestamp = ref(null)
+const latitude = ref(0)
+const longitude = ref(0)
+const locationStatus = ref("")
+const selectedProject = ref(null)
+const distance = ref(null)
+
+// --- Projects State ---
+const projects = ref([])
+const projectSearch = ref("")
+const isDropdownOpen = ref(false)
+
+// --- Cost Centers State ---
+const selectedCostCenter = ref(null)
+const costCenterSearch = ref("")
+const isCostCenterDropdownOpen = ref(false)
+const allCostCenters = ref([])
+const departmentDetails = ref(null)
+
+// --- Computed Projects Filter ---
 const filteredProjects = computed(() => {
-  // If no search text, show all projects
-  if (!projectSearch.value) return projects.value;
-
+  if (!projectSearch.value) return projects.value
   return projects.value.filter(p =>
-    p.project_name
-      ?.toLowerCase()
-      .includes(projectSearch.value.toLowerCase())
-  );
-});
+    p.project_name?.toLowerCase().includes(projectSearch.value.toLowerCase())
+  )
+})
 
 const selectProject = (project) => {
   selectedProject.value = project
   projectSearch.value = project.project_name
 }
-  async function fetchProjects() {
+
+// --- Computed Dynamic Cost Center Filtering ---
+const allowedCostCenterNames = computed(() => {
+  if (!departmentDetails.value || !departmentDetails.value.custom_cost_center) {
+    return []
+  }
+  return departmentDetails.value.custom_cost_center.map(item => item.cost_center)
+})
+
+const filteredCostCenters = computed(() => {
+  console.log("allowedCostCenterNames", allowedCostCenterNames.value)
+  console.log("allCostCenters", allCostCenters.value)
+
+  const filtered = allCostCenters.value.filter(cc =>
+    allowedCostCenterNames.value.includes(cc.name)
+  )
+
+  console.log("filtered result", filtered)
+
+  return filtered
+})
+
+// --- Dynamic Data Fetch Processing ---
+async function fetchProjects() {
   let res = await call("frappe.client.get_list", {
     doctype: "Project",
-    fields: ["name", "project_name", "custom_location", "is_active"], // include is_active
+    fields: ["name", "project_name", "custom_location", "is_active"],
     order_by: "project_name asc",
-    limit_page_length: 0,   // 0 means "no limit"
-  });
-
-  console.log(res);
-
-  // Filter out inactive projects (where is_active = "No")
-  projects.value = res.filter(project => project.is_active !== "No");
+    limit_page_length: 0,
+  })
+  projects.value = res.filter(project => project.is_active !== "No")
 }
-  const settings = createResource({
-    url: "hrms.api.get_hr_settings",
-    auto: true,
-  })
-  
-  const checkins = createListResource({
-    doctype: DOCTYPE,
-    fields: ["name", "employee", "employee_name", "log_type", "time", "device_id", "custom_project"], 
-    filters: {
-      employee: employee.data.name,
-    },
-    orderBy: "time desc",
-  })
-  checkins.reload()
-  
-  const lastLog = computed(() => {
-    if (checkins.list.loading || !checkins.data) return {}
-    return checkins.data[0]
-  })
-  
-  const lastLogType = computed(() => {
-    return lastLog?.value?.log_type === "IN" ? "check-in" : "check-out"
-  })
-  
-  const nextAction = computed(() => {
-    return lastLog?.value?.log_type === "IN"
-      ? { action: "OUT", label: "Check Out" }
-      : { action: "IN", label: "Check In" }
-  })
-  
-  const lastLogTime = computed(() => {
-    const timestamp = lastLog?.value?.time
-    const formattedTime = dayjs(timestamp).format("hh:mm a")
-  
-    if (dayjs(timestamp).isToday()) return formattedTime
-    else if (dayjs(timestamp).isYesterday()) return `${formattedTime} yesterday`
-    else if (dayjs(timestamp).isSame(dayjs(), "year"))
-      return `${formattedTime} on ${dayjs(timestamp).format("D MMM")}`
-  
-    return `${formattedTime} on ${dayjs(timestamp).format("D MMM, YYYY")}`
-  })
-  
-  /*function calculateDistance(lat1, lon1, lat2, lon2) {
-    const toRadians = (degree) => degree * (Math.PI / 180)
-    const R = 6371e3
-  
-    const φ1 = toRadians(lat1)
-    const φ2 = toRadians(lat2)
-    const Δφ = toRadians(lat2 - lat1)
-    const Δλ = toRadians(lon2 - lon1)
-  
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  
-    const distance = R * c
-    return distance
-  }*/
+const selectCostCenter = (cc) => {
+  selectedCostCenter.value = cc
+  costCenterSearch.value = cc.cost_center_name || cc.name
+  isCostCenterDropdownOpen.value = false
+}
+watchEffect(() => {
+  console.log("Allowed Names:", allowedCostCenterNames.value)
 
-  
-  function handleLocationSuccess(position) {
-    latitude.value = position.coords.latitude
-    longitude.value = position.coords.longitude
-  
-    locationStatus.value = `
-      Latitude: ${Number(latitude.value).toFixed(5)}°,
-      Longitude: ${Number(longitude.value).toFixed(5)}°
-    `
-  }
-  
-  function handleLocationError(error) {
-    locationStatus.value = "Unable to retrieve your location"
-    if (error) locationStatus.value += `: ERROR(${error.code}): ${error.message}`
-  }
-  
-  const fetchLocation = () => {
-    if (!navigator.geolocation) {
-      locationStatus.value = "Geolocation is not supported by your current browser"
-      return false
-    } else {
-      locationStatus.value = "Locating..."
-      navigator.geolocation.getCurrentPosition(handleLocationSuccess, handleLocationError)
-      return true
-    }
-  }
-  
-  const handleEmployeeCheckin = () => {
-    checkinTimestamp.value = dayjs().format("YYYY-MM-DD HH:mm:ss")
-  
-    if (settings.data?.allow_geolocation_tracking) {
-      const locationAccessGranted = fetchLocation()
-      if (!locationAccessGranted) {
-        toast({
-          title: "Error",
-          text: "Location access is required to check in.",
-          icon: "alert-circle",
-          position: "bottom-center",
-          iconClasses: "text-red-500",
-        })
-        return
-      }
-    }
-  }
-  
- const submitLog = (logType) => {
-    const action = logType === "IN" ? "Check-in" : "Check-out"
-  
-    // حالة Non-Project (لا توجد شروط)
-    if (!selectedProject.value.custom_location) {
-      checkins.insert.submit(
-        {
-          employee: employee.data.name,
-          log_type: logType,
-          time: checkinTimestamp.value,
-          latitude: latitude.value,
-          longitude: longitude.value,
-          custom_project: null, // لا يوجد مشروع
-        },
-        {
-          onSuccess() {
-            modalController.dismiss()
-            checkins.reload()
-            toast({
-              title: "Success",
-              text: `${action} successful (Non-Project)!`,
-              icon: "check-circle",
-              position: "bottom-center",
-              iconClasses: "text-green-500",
-            })
-            selectedProject.value = null
-          },
-          onError() {
-            toast({
-              title: "Error",
-              text: `${action} failed!`,
-              icon: "alert-circle",
-              position: "bottom-center",
-              iconClasses: "text-red-500",
-            })
-          },
-        }
-      )
-      return
-    }
-  
-    // حالة وجود مشروع (تطبق الشروط الأصلية)
-    if (!selectedProject.value) {
-      toast({
-        title: "Error",
-        text: "Please select a project or Non-Project option to proceed.",
-        icon: "alert-circle",
-        position: "bottom-center",
-        iconClasses: "text-red-500",
-      })
-      return
-    }
-  
-    /*if (!latitude.value || !longitude.value) {
-      toast({
-        title: "Error",
-        text: "Location data is missing.",
-        icon: "alert-circle",
-        position: "bottom-center",
-        iconClasses: "text-red-500",
-      })
-      return
-    }*/
-  
-try {
-  const geojson = JSON.parse(selectedProject.value.custom_location || '{}')
-
-  let projectLatitude = null
-  let projectLongitude = null
-
-  // Only try to get coordinates if features exist
-  if (geojson.features?.[0]?.geometry?.coordinates) {
-    [projectLongitude, projectLatitude] = geojson.features[0].geometry.coordinates
-    // Optionally calculate distance here if you want
-    /* const distance = calculateDistance(
-        latitude.value,
-        longitude.value,
-        projectLatitude,
-        projectLongitude
-    )
-    if (distance > 50) { ... } */
-  }
-
-  checkins.insert.submit(
-    {
-      employee: employee.data.name,
-      log_type: logType,
-      time: checkinTimestamp.value,
-      latitude: latitude.value,
-      longitude: longitude.value,
-      custom_project: selectedProject.value.name,
-    },
-    {
-      onSuccess() {
-        modalController.dismiss()
-        toast({
-          title: "Success",
-          text: `${action} successful!`,
-          icon: "check-circle",
-          position: "bottom-center",
-          iconClasses: "text-green-500",
-        })
-        selectedProject.value = null
-      },
-      onError() {
-        toast({
-          title: "Error",
-          text: `${action} failed!`,
-          icon: "alert-circle",
-          position: "bottom-center",
-          iconClasses: "text-red-500",
-        })
-      },
-    }
+  console.log(
+    "Cost Centers:",
+    allCostCenters.value.map(cc => ({
+      name: cc.name,
+      cost_center_name: cc.cost_center_name
+    }))
   )
-} catch (error) {
-  toast({
-    title: "Error",
-    text: "Invalid project location data.",
-    icon: "alert-circle",
-    position: "bottom-center",
-    iconClasses: "text-red-500",
-  })
-  console.error("Error parsing project location:", error)
+
+  console.log("Filtered:", filteredCostCenters.value)
+})
+
+async function fetchSessionDepartmentAndCostCenters() {
+  try {
+    console.log("Employee:", employee?.data)
+
+    const deptDoc = await call("frappe.client.get", {
+      doctype: "Department",
+      name: employee.data.department
+    })
+
+    console.log("Department Doc:", deptDoc)
+
+    departmentDetails.value = deptDoc
+
+    const ccList = await call("frappe.client.get_list", {
+      doctype: "Cost Center",
+      fields: ["name", "cost_center_name"],
+      limit_page_length: 0
+    })
+
+    console.log("Cost Centers:", ccList)
+
+    allCostCenters.value = ccList
+
+  } catch (err) {
+    console.error(err)
+  }
 }
+const settings = createResource({
+  url: "hrms.api.get_hr_settings",
+  auto: true,
+})
+
+const checkins = createListResource({
+  doctype: DOCTYPE,
+  fields: ["name", "employee", "employee_name", "log_type", "time", "device_id", "custom_project"], 
+  filters: {
+    employee: employee.data.name,
+  },
+  orderBy: "time desc",
+})
+checkins.reload()
+
+const lastLog = computed(() => {
+  if (checkins.list.loading || !checkins.data) return {}
+  return checkins.data[0]
+})
+
+const lastLogType = computed(() => {
+  return lastLog?.value?.log_type === "IN" ? "check-in" : "check-out"
+})
+
+const nextAction = computed(() => {
+  return lastLog?.value?.log_type === "IN"
+    ? { action: "OUT", label: "Check Out" }
+    : { action: "IN", label: "Check In" }
+})
+
+const lastLogTime = computed(() => {
+  const timestamp = lastLog?.value?.time
+  const formattedTime = dayjs(timestamp).format("hh:mm a")
+
+  if (dayjs(timestamp).isToday()) return formattedTime
+  else if (dayjs(timestamp).isYesterday()) return `${formattedTime} yesterday`
+  else if (dayjs(timestamp).isSame(dayjs(), "year"))
+    return `${formattedTime} on ${dayjs(timestamp).format("D MMM")}`
+
+  return `${formattedTime} on ${dayjs(timestamp).format("D MMM, YYYY")}`
+})
+
+function handleLocationSuccess(position) {
+  latitude.value = position.coords.latitude
+  longitude.value = position.coords.longitude
+
+  locationStatus.value = `
+    Latitude: ${Number(latitude.value).toFixed(5)}°,
+    Longitude: ${Number(longitude.value).toFixed(5)}°
+  `
+}
+
+function handleLocationError(error) {
+  locationStatus.value = "Unable to retrieve your location"
+  if (error) locationStatus.value += `: ERROR(${error.code}): ${error.message}`
+}
+
+const fetchLocation = () => {
+  if (!navigator.geolocation) {
+    locationStatus.value = "Geolocation is not supported by your current browser"
+    return false
+  } else {
+    locationStatus.value = "Locating..."
+    navigator.geolocation.getCurrentPosition(handleLocationSuccess, handleLocationError)
+    return true
+  }
+}
+
+const handleEmployeeCheckin = () => {
+  checkinTimestamp.value = dayjs().format("YYYY-MM-DD HH:mm:ss")
+
+  if (settings.data?.allow_geolocation_tracking) {
+    const locationAccessGranted = fetchLocation()
+    if (!locationAccessGranted) {
+      toast({
+        title: "Error",
+        text: "Location access is required to check in.",
+        icon: "alert-circle",
+        position: "bottom-center",
+        iconClasses: "text-red-500",
+      })
+      return
+    }
+  }
+}
+
+const submitLog = (logType) => {
+  const action = logType === "IN" ? "Check-in" : "Check-out"
+
+  // Validation checking to ensure they have chosen a cost center before tracking
+  if (!selectedCostCenter.value) {
+    toast({
+      title: "Validation Missing",
+      text: "Please select a verified Cost Center to proceed with this submission.",
+      icon: "alert-circle",
+      position: "bottom-center",
+      iconClasses: "text-red-500",
+    })
+    return
   }
 
-  
-  onMounted(() => {
-    socket.emit("doctype_subscribe", DOCTYPE)
-    socket.on("list_update", (data) => {
-      if (data.doctype == DOCTYPE) {
-        checkins.reload()
+  // Handle Non-Project State
+  if (selectedProject.value && !selectedProject.value.custom_location) {
+    checkins.insert.submit(
+      {
+        employee: employee.data.name,
+        log_type: logType,
+        time: checkinTimestamp.value,
+        latitude: latitude.value,
+        longitude: longitude.value,
+        custom_project: selectedProject.value.name,
+        custom_cost_center: selectedCostCenter.value.name, // Custom property mapped here
+      },
+      {
+        onSuccess() {
+          modalController.dismiss()
+          checkins.reload()
+          toast({
+            title: "Success",
+            text: `${action} successful `,
+            icon: "check-circle",
+            position: "bottom-center",
+            iconClasses: "text-green-500",
+          })
+          selectedProject.value = null
+          selectedCostCenter.value = null
+          costCenterSearch.value = ""
+        },
+        onError() {
+          toast({
+            title: "Error",
+            text: `${action} failed!`,
+            icon: "alert-circle",
+            position: "bottom-center",
+            iconClasses: "text-red-500",
+          })
+        },
       }
+    )
+    return
+  }
+
+  if (!selectedProject.value) {
+    toast({
+      title: "Error",
+      text: "Please select a project or Non-Project option to proceed.",
+      icon: "alert-circle",
+      position: "bottom-center",
+      iconClasses: "text-red-500",
     })
-  })
-  
-  onBeforeUnmount(() => {
-    socket.emit("doctype_unsubscribe", DOCTYPE)
-    socket.off("list_update")
-  })
+    return
+  }
 
+  try {
+    const geojson = JSON.parse(selectedProject.value.custom_location || '{}')
+    let projectLatitude = null
+    let projectLongitude = null
 
-  onMounted(() => {
-  fetchProjects()
+    if (geojson.features?.[0]?.geometry?.coordinates) {
+      [projectLongitude, projectLatitude] = geojson.features[0].geometry.coordinates
+    }
+
+    checkins.insert.submit(
+      {
+        employee: employee.data.name,
+        log_type: logType,
+        time: checkinTimestamp.value,
+        latitude: latitude.value,
+        longitude: longitude.value,
+        custom_project: selectedProject.value.name,
+        custom_cost_center: selectedCostCenter.value.name, // Custom mapping added here
+      },
+      {
+        onSuccess() {
+          modalController.dismiss()
+          toast({
+            title: "Success",
+            text: `${action} successful!`,
+            icon: "check-circle",
+            position: "bottom-center",
+            iconClasses: "text-green-500",
+          })
+          selectedProject.value = null
+          selectedCostCenter.value = null
+          costCenterSearch.value = ""
+        },
+        onError() {
+          toast({
+            title: "Error",
+            text: `${action} failed!`,
+            icon: "alert-circle",
+            position: "bottom-center",
+            iconClasses: "text-red-500",
+          })
+        },
+      }
+    )
+  } catch (error) {
+    toast({
+      title: "Error",
+      text: "Invalid project location data.",
+      icon: "alert-circle",
+      position: "bottom-center",
+      iconClasses: "text-red-500",
+    })
+    console.error("Error parsing project location:", error)
+  }
+}
+
+onMounted(() => {
+  socket.emit("doctype_subscribe", DOCTYPE)
+  socket.on("list_update", (data) => {
+    if (data.doctype == DOCTYPE) {
+      checkins.reload()
+    }
+  })
 })
-  </script>
+
+onBeforeUnmount(() => {
+  socket.emit("doctype_unsubscribe", DOCTYPE)
+  socket.off("list_update")
+})
+
+onMounted(() => {
+  fetchProjects()
+  fetchSessionDepartmentAndCostCenters()
+})
+</script>
