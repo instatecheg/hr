@@ -220,7 +220,8 @@ doc_events = {
 
 scheduler_events = {
 	"all": [
-		"hrms.hr.doctype.interview.interview.send_interview_reminder",
+		"hrms.hr.doctype.interview.interview.send_interview_reminder"
+		
 	],
 	"hourly": [
 		"hrms.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails",
@@ -236,6 +237,7 @@ scheduler_events = {
 		"hrms.hr.doctype.daily_work_summary_group.daily_work_summary_group.send_summary",
 		"hrms.hr.doctype.interview.interview.send_daily_feedback_reminder",
 		"hrms.hr.doctype.job_opening.job_opening.close_expired_job_openings",
+		# "hrms.api2.autoOvertimeCaculation"
 	],
 	"daily_long": [
 		"hrms.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
