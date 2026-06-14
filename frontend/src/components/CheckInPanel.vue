@@ -19,6 +19,17 @@
           </template>
           {{ nextAction.label }}
         </Button>
+        <Button
+  v-if="isCheckedIn"
+  class="mt-2 w-full py-4 text-sm bg-gray-100"
+  @click="() => $router.push({ name: 'Timesheet' })"
+>
+  <template #prefix>
+    <ShiftIcon class="w-4 h-4" />
+  </template>
+
+  Timesheet
+</Button>
       </template>
   
       <div v-else class="font-medium text-sm text-gray-500 mt-1.5">
@@ -149,6 +160,10 @@ import { computed, inject, ref, onMounted, onBeforeUnmount } from "vue"
 import { IonModal, modalController } from "@ionic/vue"
 import { watchEffect } from "vue"
 
+import { markRaw } from "vue"
+import ShiftIcon from "@/components/icons/ShiftIcon.vue"
+
+
 const DOCTYPE = "Employee Checkin"
 
 const socket = inject("$socket")
@@ -180,6 +195,9 @@ const filteredProjects = computed(() => {
     p.project_name?.toLowerCase().includes(projectSearch.value.toLowerCase())
   )
 })
+
+
+const isCheckedIn = computed(() => lastLog?.value?.log_type === "IN")
 
 const selectProject = (project) => {
   selectedProject.value = project
