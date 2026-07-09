@@ -60,8 +60,8 @@ const quickLinks = [
 	
   {
   icon: markRaw(ShiftIcon),
-  title: __("Timesheet"),
-  route: "Timesheet", 
+  title: __("DeliveryTrip"),
+  route: "DeliveryTrip", 
 }
 
 ]

@@ -140,6 +140,67 @@ before_app_uninstall = "hrms.setup.before_app_uninstall"
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                    "Delivery Trip-lh_ops_tab",
+
+                    # Trip References
+                    "Delivery Trip-lh_trip_refs_section",
+                    "Delivery Trip-lh_loading_order_no",
+                    "Delivery Trip-lh_load_id",
+                    "Delivery Trip-lh_factory_dn_no",
+                    "Delivery Trip-lh_trip_refs_col_2",
+                    "Delivery Trip-lh_customer_no",
+                    "Delivery Trip-lh_product_no",
+                    "Delivery Trip-lh_quantity",
+                    "Delivery Trip-lh_trip_refs_col_3",
+                    "Delivery Trip-lh_customer",
+                    "Delivery Trip-lh_broker_customer",
+                    "Delivery Trip-lh_product_name",
+                    "Delivery Trip-lh_factory_name",
+                    "Delivery Trip-lh_factory_scale",
+
+                    # Route Details
+                    "Delivery Trip-lh_route_section",
+                    "Delivery Trip-lh_source_location",
+                    "Delivery Trip-lh_source_city",
+                    "Delivery Trip-lh_source_district",
+                    "Delivery Trip-lh_route_col_2",
+                    "Delivery Trip-lh_destination_location",
+                    "Delivery Trip-lh_destination_city",
+                    "Delivery Trip-lh_destination_district",
+                    "Delivery Trip-lh_route_col_3",
+                    "Delivery Trip-lh_truck_type",
+                    "Delivery Trip-lh_service_type",
+                    "Delivery Trip-lh_distance_km",
+
+                    # Weights
+                    "Delivery Trip-lh_weights_section",
+                    "Delivery Trip-lh_first_weight",
+                    "Delivery Trip-lh_second_weight",
+                    "Delivery Trip-lh_net_weight",
+                    "Delivery Trip-lh_weights_col_2",
+                    "Delivery Trip-lh_customer_first_weight",
+                    "Delivery Trip-lh_customer_second_weight",
+                    "Delivery Trip-lh_customer_net_weight",
+                    "Delivery Trip-lh_weights_col_3",
+
+                    # Billing
+                    "Delivery Trip-lh_billing_section",
+                    "Delivery Trip-lh_route_fee",
+                    "Delivery Trip-lh_customer_fee_per_ton"
+                ]
+            ]
+        ]
+    }
+]
+
 has_upload_permission = {"Employee": "erpnext.setup.doctype.employee.employee.has_upload_permission"}
 
 # DocType Class

@@ -49,7 +49,12 @@ const routes = [
 		path: "/dashboard/timesheet",
 		name: "Timesheet",
 		component: () => import("@/views/timesheet/timesheet.vue"),
+	},			{
+		path: "/dashboard/delivery_trip",
+		name: "DeliveryTrip",
+		component: () => import("@/views/delivery_trip/delivery_trip.vue"),
 	},
+
 		],
 	},
 	{

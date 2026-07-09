@@ -360,6 +360,7 @@ const addLogToTable = async () => {
     return
   }
 
+
   const e = newEntry.value
 
   if (!e.activity_type || !e.from_time || !e.to_time || !e.project || !e.custom_cost_center) {

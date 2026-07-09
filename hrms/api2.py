@@ -104,3 +104,209 @@ def autoOvertimeCaculation():
             message=frappe.get_traceback(),
             title="Overtime Auto Creation Job Failed"
         )
+
+
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+
+def execute():
+    custom_fields = {
+        "Delivery Trip": [
+            {
+                "fieldname": "lh_ops_tab",
+                "label": "Logistics Hub",
+                "fieldtype": "Tab Break",
+                "insert_after": "amended_from"
+            },
+            {
+                "fieldname": "lh_trip_refs_section",
+                "label": "Trip References",
+                "fieldtype": "Section Break"
+            },
+            {
+                "fieldname": "lh_loading_order_no",
+                "label": "Loading Order No",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_load_id",
+                "label": "Load ID",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_factory_dn_no",
+                "label": "Factory DN",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_trip_refs_col_2",
+                "fieldtype": "Column Break"
+            },
+            {
+                "fieldname": "lh_customer_no",
+                "label": "Customer No",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_product_no",
+                "label": "Product No",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_quantity",
+                "label": "Quantity",
+                "fieldtype": "Float",
+                "precision": "3"
+            },
+            {
+                "fieldname": "lh_trip_refs_col_3",
+                "fieldtype": "Column Break"
+            },
+            {
+                "fieldname": "lh_customer",
+                "label": "Customer",
+                "fieldtype": "Link",
+                "options": "Customer"
+            },
+            {
+                "fieldname": "lh_broker_customer",
+                "label": "Broker Customer",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_product_name",
+                "label": "Product Name",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_factory_name",
+                "label": "Factory Name",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_factory_scale",
+                "label": "Factory Scale",
+                "fieldtype": "Data"
+            },
+
+            {
+                "fieldname": "lh_route_section",
+                "label": "Route Details",
+                "fieldtype": "Section Break"
+            },
+            {
+                "fieldname": "lh_source_location",
+                "label": "Source Location",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_source_city",
+                "label": "Source City",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_source_district",
+                "label": "Source District",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_route_col_2",
+                "fieldtype": "Column Break"
+            },
+            {
+                "fieldname": "lh_destination_location",
+                "label": "Destination Location",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_destination_city",
+                "label": "Destination City",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_destination_district",
+                "label": "Destination District",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_route_col_3",
+                "fieldtype": "Column Break"
+            },
+            {
+                "fieldname": "lh_truck_type",
+                "label": "Truck Type",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_service_type",
+                "label": "Service Type",
+                "fieldtype": "Data"
+            },
+            {
+                "fieldname": "lh_distance_km",
+                "label": "Distance (KM)",
+                "fieldtype": "Float"
+            },
+
+            {
+                "fieldname": "lh_weights_section",
+                "label": "Weights",
+                "fieldtype": "Section Break"
+            },
+            {
+                "fieldname": "lh_first_weight",
+                "label": "First Weight",
+                "fieldtype": "Float",
+                "precision": "3"
+            },
+            {
+                "fieldname": "lh_second_weight",
+                "label": "Second Weight",
+                "fieldtype": "Float",
+                "precision": "3"
+            },
+            {
+                "fieldname": "lh_net_weight",
+                "label": "Net Weight",
+                "fieldtype": "Float",
+                "precision": "3"
+            },
+            {
+                "fieldname": "lh_weights_col_2",
+                "fieldtype": "Column Break"
+            },
+            {
+                "fieldname": "lh_customer_first_weight",
+                "label": "Customer Scale W1",
+                "fieldtype": "Float"
+            },
+            {
+                "fieldname": "lh_customer_second_weight",
+                "label": "Customer Scale W2",
+                "fieldtype": "Float"
+            },
+            {
+                "fieldname": "lh_customer_net_weight",
+                "label": "Customer Net Quantity",
+                "fieldtype": "Float"
+            },
+
+            {
+                "fieldname": "lh_billing_section",
+                "label": "Billing",
+                "fieldtype": "Section Break"
+            },
+            {
+                "fieldname": "lh_route_fee",
+                "label": "Route Fee",
+                "fieldtype": "Currency"
+            },
+            {
+                "fieldname": "lh_customer_fee_per_ton",
+                "label": "Customer Fee Per Ton",
+                "fieldtype": "Currency"
+            }
+        ]
+    }
+
+    create_custom_fields(custom_fields, update=True)
